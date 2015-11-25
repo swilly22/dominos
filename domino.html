@@ -1,0 +1,668 @@
+<html>
+
+<head>
+	<title>Domino</title>
+	<style>
+		body {
+			font-family: Monospace;
+			background-color: #000000;
+			margin: 0px;
+			overflow: hidden;
+		}
+	</style>
+
+	<link rel="stylesheet" type="text/css" href="./css/styles.css">
+
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r73/three.min.js"></script>
+	
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.js"></script>
+	
+	<script type="text/javascript" src="js/OrbitControls.js"></script>
+	<script type="text/javascript" src="js/stats.js"></script>
+	<script type="text/javascript" src="js/tween.js"></script>
+	<script type="text/javascript" src="physi.js"></script>
+	<script type="text/javascript" src="audio.js"></script>
+	<script type="text/javascript" src="domino.js"></script>
+	<script type="text/javascript" src="util.js"></script>
+	<script type="text/javascript" src="gallery.js"></script>
+	<script type="text/javascript" src="arrangements.js"></script>
+	
+	<script type="text/javascript">
+
+	'use strict';
+	
+	Physijs.scripts.worker = 'physijs_worker.js';
+	Physijs.scripts.ammo = '/js/ammo.js';
+
+	// var SERVER_URL = "https://domino-1129.appspot.com";
+	var SERVER_URL = "http://app.domino.roilipman.com";
+	var edit_mode = true;
+
+	var initEventHandling;
+
+	var renderer;
+	// var physics_stats;
+	var scene;
+	var dir_light;
+	var am_light;
+	var camera;
+	var controls;
+	var audio = new Audio();	
+	var gallery;
+
+	var table;
+	var leftArrow;
+	var rightArrow;
+	var blocks = [];
+	var activeBlocks = [];
+	var meshes = [];
+
+	var table_material;
+	var intersect_plane;
+
+	var selected_block = null;
+	var intersected_block = null;
+	var mouse_position = new THREE.Vector3;
+
+	var selected_color = {'color': 0x4d4d4d};
+
+	var left_button = 1;
+	var right_button = 3;
+	var right_key = 39;
+	var left_key = 37;
+	var d_key = 68;
+	var r_key = 82;
+	var s_key = 83;
+
+	var zero = new THREE.Vector3(0, 0, 0);
+	var one = new THREE.Vector3(1, 1, 1);
+
+	var table_width = 50;
+	var table_height = 50;
+	var table_length = 1
+
+	var track_mouse = false;
+	var dragging = false;
+	var tracking_points = [];
+	var collision_history = {};
+
+	// instantiate a loader
+	var loader = new THREE.TextureLoader();
+	// http://threejs.org/docs/#Reference/Loaders/TextureLoader
+	var arrowTexture = loader.load('images/arrow.png');
+
+	function initScene() {
+		renderer = new THREE.WebGLRenderer({ 
+			// antialias: true,
+			preserveDrawingBuffer: true   // required to support .toDataURL() 
+		});
+
+		renderer.setSize( window.innerWidth, window.innerHeight );
+		// renderer.shadowMapEnabled = true;
+		// renderer.shadowMapSoft = true;
+		document.getElementById( 'viewport' ).appendChild( renderer.domElement );		
+		
+		// physics_stats = new Stats();
+		// physics_stats.domElement.style.position = 'absolute';
+		// physics_stats.domElement.style.top = '50px';
+		// physics_stats.domElement.style.zIndex = 100;
+		// document.getElementById( 'viewport' ).appendChild( physics_stats.domElement );
+
+		scene = new Physijs.Scene({ fixedTimeStep: 1 / 60 });
+		scene.setGravity(new THREE.Vector3( 0, -120, 0 ));
+		scene.addEventListener('update',
+			function() {				
+				scene.simulate();
+				// physics_stats.update();
+			}
+		);
+		
+		camera = new THREE.PerspectiveCamera(
+			35,
+			window.innerWidth / window.innerHeight,
+			1,
+			1000
+		);
+		camera.position.set( 75, 50, 0 );
+		camera.lookAt(new THREE.Vector3( 0, 0, 0 ));
+		scene.add( camera );
+		
+		controls = new THREE.OrbitControls( camera, renderer.domElement );
+		// controls.enableDamping = true;
+		// controls.dampingFactor = 0.25;
+		// controls.enableZoom = false;
+		controls.enablePan = false;
+
+		// ambient light
+		am_light = new THREE.AmbientLight( 0x444444 );
+		scene.add( am_light );
+
+		// directional light
+		dir_light = new THREE.DirectionalLight( 0xFFFFFF );
+		dir_light.position.set( 20, 30, -5 );
+		dir_light.target.position.copy( scene.position );
+		scene.add( dir_light );
+
+
+		// Table
+		table_material = Physijs.createMaterial(
+			new THREE.MeshLambertMaterial({ map: loader.load( 'images/wood1.jpg' ) }),
+			.9, // high friction
+			.2 // low restitution
+		);
+		table_material.map.wrapS = table_material.map.wrapT = THREE.RepeatWrapping;
+		table_material.map.repeat.set( 1, 1 );
+
+		table = new Physijs.BoxMesh(
+			new THREE.BoxGeometry(table_width, table_length, table_height),
+			table_material,
+			0, // mass
+			{ restitution: .2, friction: .8 }
+		);
+		table.position.y = -.5;
+		// table.receiveShadow = true;
+		scene.add( table );		
+
+		intersect_plane = new THREE.Mesh(
+			new THREE.PlaneGeometry( window.innerWidth, window.innerHeight ),
+			new THREE.MeshBasicMaterial({ opacity: 0, transparent: true, wireframe: false })
+		);
+		intersect_plane.rotation.x = Math.PI / -2;
+		scene.add( intersect_plane );
+
+		initEventHandling();
+		
+		requestAnimationFrame( render );		
+		scene.simulate();
+		
+		// var axisHelper = new THREE.AxisHelper( 5 );
+		// scene.add( axisHelper );
+
+		// arrangePyramid();
+		// arrangeCircle();
+		arrangeSpirala();
+		// arrangeText();
+		initDatGui();
+	};
+
+	var frameCount = 0;
+	function render() {
+		requestAnimationFrame( render );
+		TWEEN.update();
+		controls.update();
+		renderer.render( scene, camera );
+
+		// Once every 24 frames.
+		if(frameCount % 24 == 0) {
+			for(var i = 0; i < activeBlocks.length; i++) {
+				var block = activeBlocks[i];
+
+				// does angle between the table and current domino
+				// below Math/6?
+				if( angleToTable(block) <= Math.PI/6 && block.mass !== 0 ) {
+					// Freez.
+					block.domino.freez();
+
+					// remove domino from physics engine
+					// domino.mass = 0;
+					// activeBlocks.splice(i, 1);
+
+					// block.mass = 0;
+					// meshes.push(block);
+
+					// remove domino from scene
+					// scene.remove(block);
+					// var domino = block.domino.createBasicMesh();
+					// meshes.push(domino);
+					// scene.add(domino);
+				}
+			}
+		}
+
+		// render_stats.update();
+		frameCount++;
+	};
+
+	initEventHandling = (function() {
+		var _vector = new THREE.Vector3;
+		var handleMouseDown;
+		var handleMouseMove;
+		var handleMouseUp;
+		
+		handleMouseDown = function( evt ) {
+			var ray;
+			var button;
+			var intersections;
+			
+			button = 
+
+			_vector = screenToWorld(evt.clientX, evt.clientY);
+			mouse_position.copy(_vector);
+
+			ray = new THREE.Raycaster( camera.position, _vector.sub( camera.position ).normalize() );
+
+			var intersections = ray.intersectObjects( blocks );
+
+			switch(evt.which) {
+				case left_button:
+					if ( intersections.length !== 0 ) {
+						if(selected_block !== intersections[0].object.domino) {
+							if(selected_block !== null) {
+								selected_block.deSelect();
+							}
+							selected_block = intersections[0].object.domino;
+							selected_block.select();
+
+							selected_block.mesh.setAngularVelocity(zero);
+							selected_block.mesh.setLinearVelocity(zero);
+						}
+						dragging = true;
+						controls.enabled = false;
+					}
+					break;
+				case right_button: 
+					// are we on a domino?
+					if ( intersections.length !== 0 ) {
+						var intersected_domino = intersections[0].object.domino;
+						intersected_domino.push(intersections[0].face);
+					}
+					else {
+						var intersection = ray.intersectObject( intersect_plane );
+						mouse_position.copy( intersection[0].point );
+						startTracking(intersection[0].point);						
+					}
+					break;
+			}
+		};
+		
+		handleMouseMove = function( evt ) {
+			var ray;
+			var intersections;
+			
+			// Get mouse position in the world.
+			_vector = screenToWorld(evt.clientX, evt.clientY);
+
+			mouse_position.copy(_vector);
+				
+			ray = new THREE.Raycaster( camera.position, _vector.sub( camera.position ).normalize() );
+
+			// are we intersecting with any blocks?
+			intersections = ray.intersectObjects( blocks );			
+			if (intersections.length > 0) {
+				if (intersected_block === null) {
+					intersected_block = intersections[0].object;
+					intersected_block.domino.highlight();
+				}
+				else if(intersected_block !== intersections[0].object) {
+					// restore previous intersection object (if it exists) to its original color
+					intersected_block.domino.restoreColor();
+					intersected_block = intersections[0].object;
+					intersected_block.domino.highlight();
+				}
+			} else {
+				if(intersected_block !== null) {
+					intersected_block.domino.restoreColor();
+					intersected_block = null;
+				}
+			}
+
+			if(dragging) {				
+				intersections = ray.intersectObject( intersect_plane );
+				selected_block.mesh.__dirtyPosition = true;
+				selected_block.freez();
+				intersections[0].point.y = block_height/2;
+				selected_block.move(intersections[0].point);				
+			}
+
+			if(track_mouse) {
+				intersections = ray.intersectObject( intersect_plane );
+				var currentPoint = intersections[0].point;
+				var lastPoint = tracking_points[tracking_points.length-1].position;	
+				var distance = lastPoint.distanceTo(currentPoint);
+				var sections = Math.floor(distance / (block_thick * 3));
+				
+				for(var i = 1; i <= sections; i++) {
+					var c = lastPoint.clone();
+					// c.add(currentPoint.sub(lastPoint).multiplyScalar(i/sections));
+					c.x += (currentPoint.x - lastPoint.x) * i/sections;
+					c.z += (currentPoint.z - lastPoint.z) * i/sections;
+					tracking_points.push({position: c, color: selected_color.color});
+					track();
+				}
+			}
+		};
+		
+		handleMouseUp = function( evt ) {
+			controls.enabled = true;
+
+			switch(evt.which) {
+				case left_button:
+					dragging = false;
+					if(selected_block !== null) {
+						selected_block.mesh.__dirtyPosition = true;
+						selected_block.unFreez();
+					}
+					controls.enabled = true;
+					break;
+				case right_button:
+					stopTracking();
+					break;
+			}
+		};
+		
+		return function() {
+			renderer.domElement.addEventListener( 'mousedown', handleMouseDown );
+			renderer.domElement.addEventListener( 'mousemove', handleMouseMove );
+			renderer.domElement.addEventListener( 'mouseup', handleMouseUp );
+		};
+	})();
+
+	function startTracking(startPosition) {
+		track_mouse = true;
+		tracking_points.push({position: startPosition, color: selected_color.color});
+	}
+
+	function track() {
+		var initialHeading = new THREE.Vector3(1, 0, 0);
+		var prevPiece = tracking_points[tracking_points.length-2];
+		var currentPiece = tracking_points[tracking_points.length-1];
+
+		// compute direction vector from prev piece to current piece
+		var dirVector = currentPiece.position.clone().sub(prevPiece.position);
+
+		// compute rotation angle.
+		dirVector.y = dirVector.z;
+		var angle = -1*signedAngleBetween(initialHeading, dirVector);
+		prevPiece.angle = angle;
+
+		addDominos([prevPiece]);
+	}
+
+	function stopTracking() {
+		if(tracking_points.length > 1) {
+			// Determin last block heading.
+			var initialHeading = new THREE.Vector3(1, 0, 0);
+			var prevPiece = tracking_points[tracking_points.length-2];
+			var lastPiece = tracking_points[tracking_points.length-1];
+
+			// compute direction vector from prev piece to last piece
+			var dirVector = lastPiece.position.clone().sub(prevPiece.position);
+
+			// compute rotation angle.
+			dirVector.y = dirVector.z;
+			var angle = -1*signedAngleBetween(initialHeading, dirVector);
+
+			lastPiece.angle = angle;
+		}
+
+		track_mouse = false;
+		addDominos(tracking_points.splice(tracking_points.length-1, 1));
+		tracking_points = [];
+	}
+
+	function addDominos(pieces) {
+		var interval = setInterval(function(){
+			if(pieces.length > 0) {
+				var piece = pieces.shift();
+				var d = new Domino(piece.position, piece.angle, piece.color);
+				scene.add( d.mesh );
+				blocks.push( d.mesh );
+			} else {
+				clearInterval(interval);
+			}
+		}, 10)
+	}	
+
+	function onKeyDown(event) {
+		switch(event.keyCode) {
+		case left_key:
+			if(selected_block !== null) {
+				selected_block.turn(-Math.PI / 72);
+			}			
+			break;
+		
+		case right_key:
+			if(selected_block !== null) {
+				selected_block.turn(Math.PI / 72);
+			}
+			break;
+		
+		case d_key:
+			if(selected_block !== null) {
+				deleteDomino(selected_block);
+				selected_block = null;
+			}
+			break;
+		
+		case r_key:
+			restore();
+			break;
+
+		case s_key:
+			save();
+			break;
+		}		
+	}
+
+	function clearBoard() {
+		console.log('clear');
+		// remove domino from blocks array.
+		for(var i = blocks.length-1; i >=0; i--) {
+			var domino = blocks[i];
+			// remove domino from scene
+			scene.remove(domino);			
+		}
+
+		blocks = [];
+		console.log('clear');
+	}
+
+	function deleteDomino(domino) {
+		// remove domino from blocks array.
+		for(var i = blocks.length-1; i >=0; i--) {
+			if(blocks[i] === domino.mesh) {
+				blocks.splice(i, 1);
+				break;
+			}
+		}
+
+		// remove domino from scene
+		scene.remove(domino.mesh);
+	}
+
+	function onWindowResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+    	camera.updateProjectionMatrix();
+    	renderer.setSize( window.innerWidth, window.innerHeight );
+	}
+
+	function initDatGui() {		
+		var gui = new dat.GUI();
+		gui.addColor(selected_color, 'color');
+
+		var guiContainer = document.getElementById('guiContainer');
+		guiContainer.appendChild(gui.domElement);
+	}
+
+	function collisionHandler(other_object, relative_velocity, relative_rotation, contact_normal) {
+		// console.log('collision');
+		
+		// `this` has collided with `other_object` with an impact speed of `relative_velocity` and a rotational force of `relative_rotation` and at normal `contact_normal`			
+		var keyA = this.id + '_' + other_object.id;
+		var keyB = other_object.id + '_' + this.id;
+		var domino = this;
+
+		if (!collision_history[domino.id]) {
+			// first collision, domino placed on table.
+			collision_history[domino.id] = 1;
+		} else {
+			// Second collision.
+			activeBlocks.push(domino);
+		}
+
+		// unique collision between pices.
+		if(!collision_history[keyA] && !collision_history[keyB]) {
+			// console.log('uniqe collision between '+ this.id + ' and ' + other_object.id);
+			// console.log(keyA + ' first collision');
+			collision_history[keyA] = true;
+			collision_history[keyB] = true;
+			audio.playCollisionSound();
+			
+		} else {
+			// console.log(this.id + ' and ' + other_object.id + ' already collided');
+		}
+	}
+
+	function restore() {
+		for(var i = blocks.length-1; i >= 0; i--) {
+			var	block = blocks[i];
+			block.domino.restoreOriginalPosition();
+		}
+	}
+
+	function dataURItoBlob(dataURI) {
+	    var binary = atob(dataURI.split(',')[1]);
+	    var array = [];
+	    for(var i = 0; i < binary.length; i++) {
+	        array.push(binary.charCodeAt(i));
+	    }
+	    return array;
+	    // return new Blob([new Uint8Array(array)], {type: 'image/jpeg'});
+	}
+
+	function takeScreenShot() {
+		// var dataUrl = renderer.domElement.toDataURL("image/jpeg");
+		var dataUri = renderer.domElement.toDataURL("image/webp");
+		var binaryImage = dataURItoBlob(dataUri);
+		return binaryImage;
+		// return dataUri;
+	}
+
+	function save() {
+		var data = {};
+
+		var layout = [];
+
+		for(var i = blocks.length-1; i >=0; i--) {
+			var domino = blocks[i].domino;
+			layout.push(domino.marshal());
+		}
+
+		data.layout = layout;
+		data.screenShot = takeScreenShot();
+
+		// Send request to server.
+		var request = new XMLHttpRequest();  	
+    	request.open('POST', SERVER_URL+'/save', true);
+    	
+    	request.onload = function() {
+			console.log(request.response);
+      	};
+
+      	request.onerror = function(err) {
+      		console.log(err);
+      	}
+
+    	request.send(JSON.stringify(data));
+	}
+
+	function load(id) {
+		var request = new XMLHttpRequest();  	
+    	request.open('GET', SERVER_URL+'/'+id, true);
+    	
+    	request.onload = function() {
+			var data;
+
+			// try to parse response.
+			try{
+				data = JSON.parse(request.response);
+			} catch(e) {
+				console.log(e);
+				return;
+			}
+
+			clearBoard();
+
+			for(var i = data.layout.length-1; i >=0; i--) {				
+				data.layout[i].position = new THREE.Vector3(
+					data.layout[i].position.x,
+					data.layout[i].position.y,
+					data.layout[i].position.z
+				);
+			}
+
+			data.layout.reverse();
+			addDominos(data.layout);
+			edit_mode = false;
+      	};
+
+      	request.onerror = function(err) {
+      		console.log(err);
+      	}
+
+    	request.send();
+	}
+
+	function loadLayout() {
+		// search for ID in query string.
+		var url = window.location.href;
+		var startIdx = url.indexOf("layout=");
+		if(startIdx === -1) {
+			return;
+		}
+		
+		startIdx += "layout=".length;
+
+		var endIdx = (url.indexOf("&") !== -1) ? url.indexOf("&") : url.length;
+
+		var layoutId = url.substr(startIdx, endIdx - startIdx);
+
+		if(layoutId) {
+			load(layoutId);
+		}
+	}
+
+	function showHelp() {
+		console.log('help');
+	}
+
+	window.onload = function() {
+		initScene();
+		loadLayout();
+		gallery = new Gallery();
+	};
+
+	document.addEventListener( 'keydown', onKeyDown, false) ;
+	window.addEventListener( 'resize', onWindowResize, false );	
+
+	</script>
+
+</head>
+
+<body>
+	
+	<div id="guiContainer"></div>
+
+	<nav class="menu">
+		<a class="menu__btn">
+	        <div class="menu__bl1"><!-- --></div>
+	        <div class="menu__bl2"><!-- --></div>
+	        <div class="menu__bl3"><!-- --></div>
+        </a>
+        <ul class="menu__lists">
+            <li><a onclick="showHelp();">?</a></li>
+            <li><a onclick="gallery.showGallery();">Gallery</a></li>
+            <li><a>Share</a></li>
+            <li><a onclick="clearBoard();">Clear</a></li>
+        </ul>
+    </nav>
+		
+	<div id="viewport"></div>
+
+	<div id="gallery" class="layer layer--gallery" onclick="gallery.hideGallery();">
+		<ul id="galleryItems" class="layer--gallery__list"></ul>
+		<div><!-- --></div>
+	</div>
+</body>
+
+</html>
