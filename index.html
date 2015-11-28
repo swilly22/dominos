@@ -1,0 +1,98 @@
+<html>
+
+<head>
+	<title>Domino</title>
+	<style>
+		body {
+			font-family: Monospace;
+			background-color: #000000;
+			margin: 0px;
+			overflow: hidden;
+		}
+	</style>
+	
+	<script>
+		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  	})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  	ga('create', 'UA-65611613-3', 'auto');
+	  	ga('send', 'pageview');
+	</script>
+
+	<link rel="stylesheet" type="text/css" href="/css/styles.css">
+	<script type="text/javascript" src="/js/bundle.js"></script>
+	<script type="text/javascript">
+		window.onload = app.Init;
+	</script>
+</head>
+
+<body>
+	
+	<div id="guiContainer"></div>
+
+	<nav class="menu">
+		<a class="menu__btn">
+	        <div class="menu__bl1"><!-- --></div>
+	        <div class="menu__bl2"><!-- --></div>
+	        <div class="menu__bl3"><!-- --></div>
+        </a>
+        <ul class="menu__lists">
+            <li><a onclick="app.showHelp();">?</a></li>
+            <li><a onclick="app.showGallery();">Gallery</a></li>
+            <li><a onclick="app.share();">Share</a></li>
+            <li><a onclick="app.clearBoard();">Clear</a></li>
+        </ul>
+    </nav>
+		
+	<div id="viewport"></div>
+
+	<div id="shareDiv" class="layer layer--share">
+	    <div id="shareSucceeded" class="alert">
+	        <div class="alert__content">
+	            <div class="alert--complete__url-wrapper">
+	                <input id="shareLink" class="alert--complete__url" type="text">
+	            </div>
+	            <a id="lnkTwitter" class="alert--complete__tweet">Tweet</a>
+	        </div>
+	        <div class="alert__choises">
+	            <button onclick="app.hideShare(); app.showGallery();"class="alert__btn" style="width:50%;">See Others..</button>
+	            <button onclick="app.hideShare();" class="alert__btn" style="width:50%;">Resume</button>
+	        </div>
+	    </div>
+	    <div id="shareFailed" class="alert">
+	        <div class="alert__content">Please place some dominos.</div>
+	        <div class="alert__choises">
+	            <button onclick="app.hideShare();" class="alert__btn" style="width:100%;">Resume</button>
+	        </div>
+	    </div>
+	</div>
+
+	<div id="helpDiv" class="layer layer--help" onclick="app.hideHelp();">
+	<div class="layer--help__container">
+		<h2>Domino</h2>
+	        <p>
+	        	Right click on the board to place a new domino, to create a path of dominos hold right button and drag, right click on a domino to push it. Left click on a domino to select it, once selected use the left or right arrow keys to rotate, you can also reposition selected piece by dragging it. This program uses Physijs to handle all physical interactions, 3D is handled by three.js
+	        </p>
+	        <h3 class="layer--help__shortcut">Shortcuts</h3> 
+	        <p class="layer--help__shortcut layer--help__shortcut--left">	        	
+	            [s]: <span class="fuse">Share</span><br>
+	            [c]: <span class="bomb">Clear</span><br>
+	            [r]: <span class="fire">Restore to previous state</span><br>
+	            [d]: <span class="fire">Delete selected domino</span><br>
+	        </p>
+	        <p class="layer--help__credit">
+            	created by <a href="https://github.com/swilly22" target="_blank">swilly22</a>
+            </p>
+        </div>
+    </div>
+
+    <div id="gallery" class="layer layer--gallery" onclick="app.hideGallery();">
+		<ul id="galleryItems" class="layer--gallery__list"></ul>
+		<div><!-- --></div>
+	</div>
+
+</body>
+
+</html>

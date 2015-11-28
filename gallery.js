@@ -1,3 +1,5 @@
+var consts = require('./consts.js');
+
 function Gallery() {
 	var self = this;	
 	var gallery = document.getElementById('gallery');
@@ -42,7 +44,7 @@ function Gallery() {
 		loadingLock = true;
 
 		var request = new XMLHttpRequest();
-		var url = SERVER_URL+'/list';
+		var url = consts.SERVER_URL+'/list';
 		if(nextPageToken) {
 			url += '?token=' + nextPageToken;
 		}
@@ -77,7 +79,7 @@ function Gallery() {
 				li.appendChild(image);
 
 				li.onclick = function(id) {
-					return function() { load(id) };
+					return function() { app.load(id) };
 				}(imageId);
 
 				ul.appendChild(li);
@@ -92,3 +94,5 @@ function Gallery() {
 		request.send();
 	};	
 }
+
+module.exports = new Gallery();

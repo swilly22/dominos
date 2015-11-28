@@ -11,7 +11,7 @@ function Audio() {
 
   	var request = new XMLHttpRequest();
   	
-    request.open('GET', '/sounds/Dominoes hit table table clumsy slide2.mp3', true);
+    request.open('GET', '/sounds/domino_collision.mp3', true);
   	request.responseType = 'arraybuffer';
 
   	request.onload = function() {
@@ -39,3 +39,5 @@ function Audio() {
 
   loadSounds();
 }
+
+module.exports = new Audio();

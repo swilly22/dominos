@@ -26,6 +26,22 @@ a {
     text-decoration: none !important
 }
 
+p {
+    text-align: justify
+}
+
+input[type=text] {
+    border: 0;
+    outline: 0;
+    font-size: 14px;
+    height: 35px;
+    padding: 0 5px;
+    background-color: #363c3f;
+    font-family: 'Ubuntu', sans-serif;
+    line-height: 35px;
+    color: #d1d8db
+}
+
 button {
     border: 0;
     font-family: 'Ubuntu', sans-serif;
@@ -66,6 +82,20 @@ ol,ul {
     display: none
 }
 
+.alert {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 380px;
+    height: 0px;
+    margin: 100px 0 0 -190px;
+    background-color: #2a2f33;
+    -moz-transition: height 0.5s cubic-bezier(0.37, 0, 0.11, 1);
+    -o-transition: height 0.5s cubic-bezier(0.37, 0, 0.11, 1);
+    -webkit-transition: height 0.5s cubic-bezier(0.37, 0, 0.11, 1);
+    transition: height 0.5s cubic-bezier(0.37, 0, 0.11, 1)
+}
+
 .layer {
     position: absolute;
     top: 0%;
@@ -76,7 +106,7 @@ ol,ul {
     z-index: 20
 }
 
-.layer--gallery {
+.layer--help,.layer--gallery,.layer--share {
     overflow: scroll;
     top: -100%;
     -moz-transition: -moz-transform 0.5s cubic-bezier(0.37, 0, 0.11, 1);
@@ -85,7 +115,7 @@ ol,ul {
     transition: transform 0.5s cubic-bezier(0.37, 0, 0.11, 1)
 }
 
-.layer--gallery.is-visible {
+.layer--help.is-visible,.layer--gallery.is-visible,.layer--share.is-visible {
     -moz-transform: translate(0, 100%);
     -ms-transform: translate(0, 100%);
     -webkit-transform: translate(0, 100%);
@@ -144,4 +174,85 @@ ol,ul {
     display: inline-block;
     margin: 23px;
     float: none
+}
+
+.layer--help__container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 600px;
+    height: 500px;
+    max-width: 100%;
+    max-height: 100%;
+    margin-top: -250px;
+    margin-left: -300px
+}
+
+.layer--help__container h2,.layer--help__container h3 {
+    text-align: center;
+    margin-bottom: 20px
+}
+
+.layer--help__container h2:before,.layer--help__container h2:after {    
+    letter-spacing: .2em
+}
+
+.layer--help__container p {
+    margin-bottom: 20px
+}
+
+.alert__wrapper {
+    position: absolute;
+    display: none;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%
+}
+
+.alert__content {
+    height: 75px;
+    border-bottom: 2px solid #474d52;
+    text-align: center;
+}
+
+.alert__choises {
+    position: relative;
+    height: 45px;
+    *zoom:1
+}
+
+.alert__btn {
+    display: block;
+    float: left;    
+    height: 100%;
+    background-color: transparent;
+    font-size: 18px;
+    color: #d1d8db;
+    border-right: 2px solid #474d52;
+    border-left: 2px solid #474d52;
+    border-bottom: 2px solid #474d52;
+
+}
+
+.alert--complete__url-wrapper {
+    position: absolute;
+    top: 20px;
+    right: 70px;
+    left: 20px
+}
+
+.alert--complete__url {
+    width: 100%
+}
+
+.alert--complete__tweet {
+    position: absolute;
+    top: 22px;
+    right: 15px;
+    font-size: 14px
+}
+
+.alert__wrapper--failed {
+    display: block
 }

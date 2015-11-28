@@ -1,30 +1,25 @@
-// domino dimensions
-var block_thick = 0.5;
-var block_height = 4;
-var block_width = 2;
+var Consts = require('./consts.js');
+var Globals = require('./globals.js');
+var THREE = require('three');
+var Utils = require('./utils.js');
+var TWEEN = require('tween');
 
-// var block_height = 1.785;
-// var block_width = 0.9375;
-// var block_thick = 0.25;
-
-var domino_base_color = 0x4d4d4d;
-
-function Domino(position, angle, color) {
+function Domino(position, angle, color, collisionHandler, Physijs) {
 
 	this.rotation = new THREE.Vector3(0,0,0);
-	// this.angle = angle || 0;
 	this.angle = 0;
-	this.color =  color || domino_base_color;
+	this.color =  color || Consts.domino_base_color;
 	this.mesh;
 
-	var block_material = Physijs.createMaterial(new THREE.MeshLambertMaterial({color: this.color,
-		vertexColors: THREE.FaceColors}),
-		0.4, // medium friction
-		0.2 // medium restitution ("bounciness")
+	var block_material = Physijs.createMaterial(
+		new THREE.MeshLambertMaterial(
+			{color: this.color, vertexColors: THREE.FaceColors}),
+			0.4, // medium friction
+			0.2 // medium restitution ("bounciness")
 	);
 
 	
-	var block_geometry = new THREE.CubeGeometry(block_thick, block_height,block_width);
+	var block_geometry = new THREE.CubeGeometry(Consts.block_thick, Consts.block_height,Consts.block_width);
 	this.mesh = new Physijs.BoxMesh(block_geometry, block_material);
 	
 	this.move(position);
@@ -33,14 +28,11 @@ function Domino(position, angle, color) {
 	}
 	
 	this.mesh.__dirtyPosition = true;
-	this.position.y = 1.2 + block_height/2;
+	this.position.y = 1.2 + Consts.block_height/2;
 	this.mesh.position.copy(this.position);	
 
 	this.mesh.setCcdMotionThreshold(0.1);
 	this.mesh.setCcdSweptSphereRadius(0.2);
-
-	// var edges = new THREE.FaceNormalsHelper( domino, 2, 0x00ff00, 1 );
-	// scene.add(edges);
 
 	this.mesh.addEventListener('collision', collisionHandler, false);
 
@@ -72,7 +64,7 @@ Domino.prototype.push = function(face) {
 	var f = new THREE.Vector3().copy(normal);
 	
 	// apply force in oposite direction.
-	f.multiplyScalar(-2.5);
+	f.multiplyScalar(-3.5);
 	this.mesh.setLinearVelocity(f);
 	// domino.applyCentralImpulse(f);
 }
@@ -90,8 +82,8 @@ Domino.prototype.restoreColor = function() {
 }
 
 Domino.prototype.select = function() {
-	this.color = new THREE.Color(selected_color.color);
-	this.mesh.material.color = this.color;
+	this.color = Globals.selected_color.color;
+	this.mesh.material.color = new THREE.Color(Globals.selected_color.color);
 	this.highlight();
 	this.highlight();
 
@@ -116,20 +108,20 @@ Domino.prototype.deSelect = function() {
 }
 
 Domino.prototype.freez = function() {
-	if(edit_mode) {
-		this.mesh.setAngularVelocity(zero);
-		this.mesh.setLinearVelocity(zero);
+	if(Globals.edit_mode) {
+		this.mesh.setAngularVelocity(Consts.zero);
+		this.mesh.setLinearVelocity(Consts.zero);
 	} else {
 		this.mesh.mass = 0;
 	}
 }
 
 Domino.prototype.unFreez = function() {
-	if(edit_mode) {
-		this.mesh.setAngularVelocity(one);
-		this.mesh.setLinearVelocity(one);
+	if(Globals.edit_mode) {
+		this.mesh.setAngularVelocity(Consts.one);
+		this.mesh.setLinearVelocity(Consts.one);
 	} else {
-		this.mesh.mass = block_width * block_height * block_thick;	
+		this.mesh.mass = Consts.block_width * Consts.block_height * Consts.block_thick;	
 	}
 }
 
@@ -149,20 +141,20 @@ Domino.prototype.restoreOriginalPosition = function() {
 	// convert roration angle to a vector.
 	var xFromRotationV = new THREE.Vector2(Math.cos(this.mesh.rotation.x), Math.sin(this.mesh.rotation.x));
 	var xToRotationV = new THREE.Vector2(Math.cos(this.rotation.x), Math.sin(this.rotation.x));
-	var rotX = signedAngleBetween(xFromRotationV, xToRotationV);
+	var rotX = Utils.signedAngleBetween(xFromRotationV, xToRotationV);
 	rotX += this.mesh.rotation.x;
 
 	var yFromRotationV = new THREE.Vector2(Math.cos(this.mesh.rotation.y), Math.sin(this.mesh.rotation.y));
 	var yToRotationV = new THREE.Vector2(Math.cos(this.rotation.y), Math.sin(this.rotation.y));
-	var rotY = signedAngleBetween(yFromRotationV, yToRotationV);
+	var rotY = Utils.signedAngleBetween(yFromRotationV, yToRotationV);
 	rotY += this.mesh.rotation.y;
 
 	var zFromRotationV = new THREE.Vector2(Math.cos(this.mesh.rotation.z), Math.sin(this.mesh.rotation.z));
 	var zToRotationV = new THREE.Vector2(Math.cos(this.rotation.z), Math.sin(this.rotation.z));
-	var rotZ = signedAngleBetween(zFromRotationV, zToRotationV);
+	var rotZ = Utils.signedAngleBetween(zFromRotationV, zToRotationV);
 	rotZ += this.mesh.rotation.z;
 
-	var to = {posX: this.position.x, posY: (block_height/2) + 0.05, posZ: this.position.z,
+	var to = {posX: this.position.x, posY: (Consts.block_height/2) + 0.05, posZ: this.position.z,
     rotX: rotX, rotY: rotY, rotZ: rotZ};
 
 	var tween = new TWEEN.Tween(from)
@@ -188,3 +180,5 @@ Domino.prototype.restoreOriginalPosition = function() {
     })
     .start();
 }
+
+module.exports = Domino;

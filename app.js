@@ -1,86 +1,38 @@
-<html>
+'use strict';
 
-<head>
-	<title>Domino</title>
-	<style>
-		body {
-			font-family: Monospace;
-			background-color: #000000;
-			margin: 0px;
-			overflow: hidden;
-		}
-	</style>
+var THREE = require('three');
+var Physijs = require('physijs-browserify')(THREE);
+var OrbitControls = require('three-orbit-controls')(THREE)
+var dat = require('dat-gui');
+var TWEEN = require('tween');
 
-	<link rel="stylesheet" type="text/css" href="./css/styles.css">
+var Utils = require('./utils.js');
+var Consts = require('./consts.js');
+var Globals = require('./globals.js');
+var Domino = require('./domino.js');
+var Arrangments = require('./arrangements.js');
 
-	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r73/three.min.js"></script>
-	
-	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.js"></script>
-	
-	<script type="text/javascript" src="js/OrbitControls.js"></script>
-	<script type="text/javascript" src="js/stats.js"></script>
-	<script type="text/javascript" src="js/tween.js"></script>
-	<script type="text/javascript" src="physi.js"></script>
-	<script type="text/javascript" src="audio.js"></script>
-	<script type="text/javascript" src="domino.js"></script>
-	<script type="text/javascript" src="util.js"></script>
-	<script type="text/javascript" src="gallery.js"></script>
-	<script type="text/javascript" src="arrangements.js"></script>
-	
-	<script type="text/javascript">
 
-	'use strict';
-	
-	Physijs.scripts.worker = 'physijs_worker.js';
-	Physijs.scripts.ammo = '/js/ammo.js';
+// Physijs.scripts.worker = './node_modules/physijs-browserify/libs/physi-worker.js';
+Physijs.scripts.worker = '/js/physi-worker.js';
+Physijs.scripts.ammo = 'ammo.js';
 
-	// var SERVER_URL = "https://domino-1129.appspot.com";
-	var SERVER_URL = "http://app.domino.roilipman.com";
-	var edit_mode = true;
 
+function App () {
+	var self = this;
 	var initEventHandling;
-
 	var renderer;
-	// var physics_stats;
 	var scene;
-	var dir_light;
-	var am_light;
 	var camera;
 	var controls;
-	var audio = new Audio();	
+	var audio = require('./audio.js');
 	var gallery;
-
-	var table;
-	var leftArrow;
-	var rightArrow;
 	var blocks = [];
 	var activeBlocks = [];
-	var meshes = [];
-
-	var table_material;
 	var intersect_plane;
-
 	var selected_block = null;
 	var intersected_block = null;
 	var mouse_position = new THREE.Vector3;
-
-	var selected_color = {'color': 0x4d4d4d};
-
-	var left_button = 1;
-	var right_button = 3;
-	var right_key = 39;
-	var left_key = 37;
-	var d_key = 68;
-	var r_key = 82;
-	var s_key = 83;
-
-	var zero = new THREE.Vector3(0, 0, 0);
-	var one = new THREE.Vector3(1, 1, 1);
-
-	var table_width = 50;
-	var table_height = 50;
-	var table_length = 1
-
 	var track_mouse = false;
 	var dragging = false;
 	var tracking_points = [];
@@ -88,8 +40,7 @@
 
 	// instantiate a loader
 	var loader = new THREE.TextureLoader();
-	// http://threejs.org/docs/#Reference/Loaders/TextureLoader
-	var arrowTexture = loader.load('images/arrow.png');
+	// var arrowTexture = loader.load('images/arrow.png');
 
 	function initScene() {
 		renderer = new THREE.WebGLRenderer({ 
@@ -102,18 +53,11 @@
 		// renderer.shadowMapSoft = true;
 		document.getElementById( 'viewport' ).appendChild( renderer.domElement );		
 		
-		// physics_stats = new Stats();
-		// physics_stats.domElement.style.position = 'absolute';
-		// physics_stats.domElement.style.top = '50px';
-		// physics_stats.domElement.style.zIndex = 100;
-		// document.getElementById( 'viewport' ).appendChild( physics_stats.domElement );
-
 		scene = new Physijs.Scene({ fixedTimeStep: 1 / 60 });
 		scene.setGravity(new THREE.Vector3( 0, -120, 0 ));
 		scene.addEventListener('update',
 			function() {				
 				scene.simulate();
-				// physics_stats.update();
 			}
 		);
 		
@@ -127,38 +71,36 @@
 		camera.lookAt(new THREE.Vector3( 0, 0, 0 ));
 		scene.add( camera );
 		
-		controls = new THREE.OrbitControls( camera, renderer.domElement );
-		// controls.enableDamping = true;
-		// controls.dampingFactor = 0.25;
-		// controls.enableZoom = false;
+		controls = new OrbitControls(camera);	
 		controls.enablePan = false;
 
 		// ambient light
-		am_light = new THREE.AmbientLight( 0x444444 );
+		var am_light = new THREE.AmbientLight( 0x444444 );
 		scene.add( am_light );
 
 		// directional light
-		dir_light = new THREE.DirectionalLight( 0xFFFFFF );
+		var dir_light = new THREE.DirectionalLight( 0xFFFFFF );
 		dir_light.position.set( 20, 30, -5 );
 		dir_light.target.position.copy( scene.position );
 		scene.add( dir_light );
 
 
 		// Table
-		table_material = Physijs.createMaterial(
-			new THREE.MeshLambertMaterial({ map: loader.load( 'images/wood1.jpg' ) }),
+		var table_material = Physijs.createMaterial(
+			new THREE.MeshLambertMaterial({ map: loader.load( '/textures/wood.jpg' ) }),
 			.9, // high friction
 			.2 // low restitution
 		);
 		table_material.map.wrapS = table_material.map.wrapT = THREE.RepeatWrapping;
 		table_material.map.repeat.set( 1, 1 );
 
-		table = new Physijs.BoxMesh(
-			new THREE.BoxGeometry(table_width, table_length, table_height),
+		var table = new Physijs.BoxMesh(
+			new THREE.BoxGeometry(Consts.table_width, Consts.table_length, Consts.table_height),
 			table_material,
 			0, // mass
 			{ restitution: .2, friction: .8 }
 		);
+
 		table.position.y = -.5;
 		// table.receiveShadow = true;
 		scene.add( table );		
@@ -175,21 +117,17 @@
 		requestAnimationFrame( render );		
 		scene.simulate();
 		
-		// var axisHelper = new THREE.AxisHelper( 5 );
-		// scene.add( axisHelper );
-
-		// arrangePyramid();
-		// arrangeCircle();
-		arrangeSpirala();
-		// arrangeText();
+		// addDominos(Arrangments.arrangePyramid());
+		// addDominos(Arrangments.arrangeCircle());
+		// addDominos(Arrangments.arrangeSpirala());
+		// addDominos(Arrangments.arrangeText());
 		initDatGui();
 	};
 
 	var frameCount = 0;
 	function render() {
 		requestAnimationFrame( render );
-		TWEEN.update();
-		controls.update();
+		TWEEN.update();	
 		renderer.render( scene, camera );
 
 		// Once every 24 frames.
@@ -199,27 +137,16 @@
 
 				// does angle between the table and current domino
 				// below Math/6?
-				if( angleToTable(block) <= Math.PI/6 && block.mass !== 0 ) {
+				if( Utils.angleToTable(block) <= Math.PI/6 && block.mass !== 0 ) {
 					// Freez.
 					block.domino.freez();
 
 					// remove domino from physics engine
 					// domino.mass = 0;
 					// activeBlocks.splice(i, 1);
-
-					// block.mass = 0;
-					// meshes.push(block);
-
-					// remove domino from scene
-					// scene.remove(block);
-					// var domino = block.domino.createBasicMesh();
-					// meshes.push(domino);
-					// scene.add(domino);
 				}
 			}
 		}
-
-		// render_stats.update();
 		frameCount++;
 	};
 
@@ -236,7 +163,7 @@
 			
 			button = 
 
-			_vector = screenToWorld(evt.clientX, evt.clientY);
+			_vector = Utils.screenToWorld(evt.clientX, evt.clientY, camera);
 			mouse_position.copy(_vector);
 
 			ray = new THREE.Raycaster( camera.position, _vector.sub( camera.position ).normalize() );
@@ -244,7 +171,7 @@
 			var intersections = ray.intersectObjects( blocks );
 
 			switch(evt.which) {
-				case left_button:
+				case Consts.left_button:
 					if ( intersections.length !== 0 ) {
 						if(selected_block !== intersections[0].object.domino) {
 							if(selected_block !== null) {
@@ -253,14 +180,14 @@
 							selected_block = intersections[0].object.domino;
 							selected_block.select();
 
-							selected_block.mesh.setAngularVelocity(zero);
-							selected_block.mesh.setLinearVelocity(zero);
+							selected_block.mesh.setAngularVelocity(Consts.zero);
+							selected_block.mesh.setLinearVelocity(Consts.zero);
 						}
 						dragging = true;
 						controls.enabled = false;
 					}
 					break;
-				case right_button: 
+				case Consts.right_button: 
 					// are we on a domino?
 					if ( intersections.length !== 0 ) {
 						var intersected_domino = intersections[0].object.domino;
@@ -280,7 +207,7 @@
 			var intersections;
 			
 			// Get mouse position in the world.
-			_vector = screenToWorld(evt.clientX, evt.clientY);
+			_vector = Utils.screenToWorld(evt.clientX, evt.clientY, camera);
 
 			mouse_position.copy(_vector);
 				
@@ -310,7 +237,7 @@
 				intersections = ray.intersectObject( intersect_plane );
 				selected_block.mesh.__dirtyPosition = true;
 				selected_block.freez();
-				intersections[0].point.y = block_height/2;
+				intersections[0].point.y = Consts.block_height/2;
 				selected_block.move(intersections[0].point);				
 			}
 
@@ -319,14 +246,14 @@
 				var currentPoint = intersections[0].point;
 				var lastPoint = tracking_points[tracking_points.length-1].position;	
 				var distance = lastPoint.distanceTo(currentPoint);
-				var sections = Math.floor(distance / (block_thick * 3));
+				var sections = Math.floor(distance / (Consts.block_thick * 3));
 				
 				for(var i = 1; i <= sections; i++) {
 					var c = lastPoint.clone();
 					// c.add(currentPoint.sub(lastPoint).multiplyScalar(i/sections));
 					c.x += (currentPoint.x - lastPoint.x) * i/sections;
 					c.z += (currentPoint.z - lastPoint.z) * i/sections;
-					tracking_points.push({position: c, color: selected_color.color});
+					tracking_points.push({position: c, color: Globals.selected_color.color});
 					track();
 				}
 			}
@@ -336,7 +263,7 @@
 			controls.enabled = true;
 
 			switch(evt.which) {
-				case left_button:
+				case Consts.left_button:
 					dragging = false;
 					if(selected_block !== null) {
 						selected_block.mesh.__dirtyPosition = true;
@@ -344,7 +271,7 @@
 					}
 					controls.enabled = true;
 					break;
-				case right_button:
+				case Consts.right_button:
 					stopTracking();
 					break;
 			}
@@ -359,7 +286,7 @@
 
 	function startTracking(startPosition) {
 		track_mouse = true;
-		tracking_points.push({position: startPosition, color: selected_color.color});
+		tracking_points.push({position: startPosition, color: Globals.selected_color.color});
 	}
 
 	function track() {
@@ -372,7 +299,7 @@
 
 		// compute rotation angle.
 		dirVector.y = dirVector.z;
-		var angle = -1*signedAngleBetween(initialHeading, dirVector);
+		var angle = -1*Utils.signedAngleBetween(initialHeading, dirVector);
 		prevPiece.angle = angle;
 
 		addDominos([prevPiece]);
@@ -390,7 +317,7 @@
 
 			// compute rotation angle.
 			dirVector.y = dirVector.z;
-			var angle = -1*signedAngleBetween(initialHeading, dirVector);
+			var angle = -1*Utils.signedAngleBetween(initialHeading, dirVector);
 
 			lastPiece.angle = angle;
 		}
@@ -404,7 +331,7 @@
 		var interval = setInterval(function(){
 			if(pieces.length > 0) {
 				var piece = pieces.shift();
-				var d = new Domino(piece.position, piece.angle, piece.color);
+				var d = new Domino(piece.position, piece.angle, piece.color, collisionHandler, Physijs);
 				scene.add( d.mesh );
 				blocks.push( d.mesh );
 			} else {
@@ -415,47 +342,37 @@
 
 	function onKeyDown(event) {
 		switch(event.keyCode) {
-		case left_key:
+		case Consts.left_key:
 			if(selected_block !== null) {
 				selected_block.turn(-Math.PI / 72);
 			}			
 			break;
 		
-		case right_key:
+		case Consts.right_key:
 			if(selected_block !== null) {
 				selected_block.turn(Math.PI / 72);
 			}
 			break;
 		
-		case d_key:
+		case Consts.d_key:
 			if(selected_block !== null) {
 				deleteDomino(selected_block);
 				selected_block = null;
 			}
 			break;
+
+		case Consts.c_key:
+			self.clearBoard();
 		
-		case r_key:
+		case Consts.r_key:
 			restore();
 			break;
 
-		case s_key:
-			save();
+		case Consts.s_key:
+			self.share();
 			break;
 		}		
-	}
-
-	function clearBoard() {
-		console.log('clear');
-		// remove domino from blocks array.
-		for(var i = blocks.length-1; i >=0; i--) {
-			var domino = blocks[i];
-			// remove domino from scene
-			scene.remove(domino);			
-		}
-
-		blocks = [];
-		console.log('clear');
-	}
+	}	
 
 	function deleteDomino(domino) {
 		// remove domino from blocks array.
@@ -472,13 +389,13 @@
 
 	function onWindowResize() {
 		camera.aspect = window.innerWidth / window.innerHeight;
-    	camera.updateProjectionMatrix();
-    	renderer.setSize( window.innerWidth, window.innerHeight );
+		camera.updateProjectionMatrix();
+		renderer.setSize( window.innerWidth, window.innerHeight );
 	}
 
 	function initDatGui() {		
 		var gui = new dat.GUI();
-		gui.addColor(selected_color, 'color');
+		gui.addColor(Globals.selected_color, 'color');
 
 		var guiContainer = document.getElementById('guiContainer');
 		guiContainer.appendChild(gui.domElement);
@@ -514,63 +431,27 @@
 	}
 
 	function restore() {
-		for(var i = blocks.length-1; i >= 0; i--) {
-			var	block = blocks[i];
-			block.domino.restoreOriginalPosition();
+		if(Globals.edit_mode) {
+			for(var i = blocks.length-1; i >= 0; i--) {
+				var	block = blocks[i];
+				block.domino.restoreOriginalPosition();
+			}
+		} else {
+			var pieces = [];
+			for(var i = blocks.length-1; i >=0; i--) {
+				var domino = blocks[i].domino;
+				pieces.push({'position': domino.position, 'angle': domino.angle, 'color': domino.color});
+			}
+			self.clearBoard();
+			addDominos(pieces);
 		}
-	}
+	}	
 
-	function dataURItoBlob(dataURI) {
-	    var binary = atob(dataURI.split(',')[1]);
-	    var array = [];
-	    for(var i = 0; i < binary.length; i++) {
-	        array.push(binary.charCodeAt(i));
-	    }
-	    return array;
-	    // return new Blob([new Uint8Array(array)], {type: 'image/jpeg'});
-	}
-
-	function takeScreenShot() {
-		// var dataUrl = renderer.domElement.toDataURL("image/jpeg");
-		var dataUri = renderer.domElement.toDataURL("image/webp");
-		var binaryImage = dataURItoBlob(dataUri);
-		return binaryImage;
-		// return dataUri;
-	}
-
-	function save() {
-		var data = {};
-
-		var layout = [];
-
-		for(var i = blocks.length-1; i >=0; i--) {
-			var domino = blocks[i].domino;
-			layout.push(domino.marshal());
-		}
-
-		data.layout = layout;
-		data.screenShot = takeScreenShot();
-
-		// Send request to server.
+	this.load = function(id) {
 		var request = new XMLHttpRequest();  	
-    	request.open('POST', SERVER_URL+'/save', true);
-    	
-    	request.onload = function() {
-			console.log(request.response);
-      	};
-
-      	request.onerror = function(err) {
-      		console.log(err);
-      	}
-
-    	request.send(JSON.stringify(data));
-	}
-
-	function load(id) {
-		var request = new XMLHttpRequest();  	
-    	request.open('GET', SERVER_URL+'/'+id, true);
-    	
-    	request.onload = function() {
+		request.open('GET', Consts.SERVER_URL+'/'+id, true);
+		
+		request.onload = function() {
 			var data;
 
 			// try to parse response.
@@ -581,7 +462,7 @@
 				return;
 			}
 
-			clearBoard();
+			self.clearBoard();
 
 			for(var i = data.layout.length-1; i >=0; i--) {				
 				data.layout[i].position = new THREE.Vector3(
@@ -593,76 +474,129 @@
 
 			data.layout.reverse();
 			addDominos(data.layout);
-			edit_mode = false;
-      	};
+			Globals.edit_mode = false;
+	  	};
 
-      	request.onerror = function(err) {
-      		console.log(err);
-      	}
+	  	request.onerror = function(err) {
+	  		console.log(err);
+	  	}
 
-    	request.send();
+		request.send();
 	}
 
-	function loadLayout() {
-		// search for ID in query string.
-		var url = window.location.href;
-		var startIdx = url.indexOf("layout=");
-		if(startIdx === -1) {
-			return;
+	this.clearBoard = function() {
+		// remove domino from blocks array.
+		for(var i = blocks.length-1; i >=0; i--) {
+			var domino = blocks[i];
+			// remove domino from scene
+			scene.remove(domino);
 		}
-		
-		startIdx += "layout=".length;
-
-		var endIdx = (url.indexOf("&") !== -1) ? url.indexOf("&") : url.length;
-
-		var layoutId = url.substr(startIdx, endIdx - startIdx);
-
-		if(layoutId) {
-			load(layoutId);
-		}
-	}
-
-	function showHelp() {
-		console.log('help');
-	}
-
-	window.onload = function() {
-		initScene();
-		loadLayout();
-		gallery = new Gallery();
+		blocks = [];
 	};
 
-	document.addEventListener( 'keydown', onKeyDown, false) ;
-	window.addEventListener( 'resize', onWindowResize, false );	
+	this.share = function() {
+		controls.enabled = false;
 
-	</script>
+		var data = {};
 
-</head>
+		var layout = [];
 
-<body>
-	
-	<div id="guiContainer"></div>
+		for(var i = blocks.length-1; i >=0; i--) {
+			var domino = blocks[i].domino;
+			layout.push(domino.marshal());
+		}
 
-	<nav class="menu">
-		<a class="menu__btn">
-	        <div class="menu__bl1"><!-- --></div>
-	        <div class="menu__bl2"><!-- --></div>
-	        <div class="menu__bl3"><!-- --></div>
-        </a>
-        <ul class="menu__lists">
-            <li><a onclick="showHelp();">?</a></li>
-            <li><a onclick="gallery.showGallery();">Gallery</a></li>
-            <li><a>Share</a></li>
-            <li><a onclick="clearBoard();">Clear</a></li>
-        </ul>
-    </nav>
+		// No dominos
+		if (layout.length === 0) {
+			console.log('Please place some dominos.');
+			var shareLayer = document.getElementById('shareDiv');
+			shareLayer.className = 'layer layer--share is-visible';
+
+			var shareSucceeded = document.getElementById('shareSucceeded');
+			shareSucceeded.style.display='none';
+
+			var shareSucceeded = document.getElementById('shareFailed');
+			shareSucceeded.style.display='block';
+
+			return;
+		}
+
+		data.layout = layout;
+		data.screenShot = Utils.takeScreenShot(renderer);
+
+		// Send request to server.
+		var request = new XMLHttpRequest();  	
+		request.open('POST', Consts.SERVER_URL+'/save', true);
 		
-	<div id="viewport"></div>
+		request.onload = function() {
+			var resp = JSON.parse(request.response);
 
-	<div id="gallery" class="layer layer--gallery" onclick="gallery.hideGallery();">
-		<ul id="galleryItems" class="layer--gallery__list"></ul>
-		<div><!-- --></div>
-	</div>
-</body>
+			var shareLayer = document.getElementById('shareDiv');
+			shareLayer.className = 'layer layer--share is-visible';
 
-</html>
+			var shareSucceeded = document.getElementById('shareSucceeded');
+			shareSucceeded.style.display='block';
+
+			var shareSucceeded = document.getElementById('shareFailed');
+			shareSucceeded.style.display='none';
+
+			var shareLinkURL = 'http://domino.roilipman.com/?l='+resp.layoutId;
+
+			var shareLinkTxt = document.getElementById('shareLink');
+			shareLinkTxt.value = shareLinkURL;
+
+			var lnkTwitter = document.getElementById('lnkTwitter');
+			lnkTwitter.onclick = function(){Utils.tweet('https://twitter.com/intent/tweet?url=' + shareLinkURL + '&text=Domino (No.'+resp.layoutNumber+')')};
+
+			console.log(request.response);
+	  	};
+
+	  	request.onerror = function(err) {
+	  		console.log(err);
+	  	}
+
+		request.send(JSON.stringify(data));
+	}
+
+	this.showHelp = function() {
+		var help = document.getElementById('helpDiv');
+		help.className = 'layer layer--help is-visible';
+	};
+
+	this.showGallery = function() {
+		controls.enabled = false;
+		gallery.showGallery();
+	};
+
+	this.hideGallery = function() {
+		controls.enabled = true;
+		gallery.hideGallery();
+	};
+
+	this.hideHelp = function() {
+		var helpDiv = document.getElementById('helpDiv');
+		helpDiv.className = 'layer layer--help';
+	};
+
+	this.hideShare = function() {
+		controls.enabled = true;
+		var shareDiv = document.getElementById('shareDiv');
+		shareDiv.className = 'layer layer--share';
+	}
+
+	this.Init = function() {	
+		initScene();
+
+		document.addEventListener( 'keydown', onKeyDown, false);
+		window.addEventListener( 'resize', onWindowResize, false );
+		
+		gallery = require('./gallery.js');
+
+		var layoutId = Utils.getPageId();
+		if(layoutId) {
+			self.load(layoutId);		
+		}
+	};	
+}
+
+window.app = new App();
