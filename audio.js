@@ -4,12 +4,7 @@ function Audio() {
   var audioBuffer;
 
   var loadSounds = function() {
-    // Domino set down table_BLASTWAVEFX_15951.mp3
-    // Dominoes hit table table dull.mp3
-    // Dominoes hit table table clumsy slide.mp3
-    // Dominoes hit table table high.mp3
-
-  	var request = new XMLHttpRequest();
+    var request = new XMLHttpRequest();
   	
     request.open('GET', '/sounds/domino_collision.mp3', true);
   	request.responseType = 'arraybuffer';
