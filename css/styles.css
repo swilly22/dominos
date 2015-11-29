@@ -106,7 +106,7 @@ ol,ul {
     z-index: 20
 }
 
-.layer--help,.layer--gallery,.layer--share {
+.layer--help,.layer--gallery,.layer--share,.layer--nomobile {
     overflow: scroll;
     top: -100%;
     -moz-transition: -moz-transform 0.5s cubic-bezier(0.37, 0, 0.11, 1);
@@ -115,7 +115,7 @@ ol,ul {
     transition: transform 0.5s cubic-bezier(0.37, 0, 0.11, 1)
 }
 
-.layer--help.is-visible,.layer--gallery.is-visible,.layer--share.is-visible {
+.layer--help.is-visible,.layer--gallery.is-visible,.layer--share.is-visible,.layer--nomobile.is-visible {
     -moz-transform: translate(0, 100%);
     -ms-transform: translate(0, 100%);
     -webkit-transform: translate(0, 100%);

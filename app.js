@@ -11,6 +11,7 @@ var Consts = require('./consts.js');
 var Globals = require('./globals.js');
 var Domino = require('./domino.js');
 var Arrangments = require('./arrangements.js');
+var MobileDetect = require('mobile-detect');
 
 
 // Physijs.scripts.worker = './node_modules/physijs-browserify/libs/physi-worker.js';
@@ -37,6 +38,7 @@ function App () {
 	var dragging = false;
 	var tracking_points = [];
 	var collision_history = {};
+	var mobileDetect = new MobileDetect(window.navigator.userAgent);
 
 	// instantiate a loader
 	var loader = new THREE.TextureLoader();
@@ -155,13 +157,28 @@ function App () {
 		var handleMouseDown;
 		var handleMouseMove;
 		var handleMouseUp;
-		
+		var handleTouchend;
+
+		handleTouchend = function( evt ) {
+			var touch = evt.changedTouches[0];
+
+			_vector = Utils.screenToWorld(touch.clientX, touch.clientY, camera);
+			mouse_position.copy(_vector);
+
+			var ray = new THREE.Raycaster( camera.position, _vector.sub( camera.position ).normalize() );
+
+			var intersections = ray.intersectObjects( blocks );
+
+			// are we on a domino?
+			if ( intersections.length !== 0 ) {
+				var intersected_domino = intersections[0].object.domino;
+				intersected_domino.push(intersections[0].face);
+			}
+		};
+
 		handleMouseDown = function( evt ) {
 			var ray;
 			var button;
-			var intersections;
-			
-			button = 
 
 			_vector = Utils.screenToWorld(evt.clientX, evt.clientY, camera);
 			mouse_position.copy(_vector);
@@ -278,9 +295,13 @@ function App () {
 		};
 		
 		return function() {
-			renderer.domElement.addEventListener( 'mousedown', handleMouseDown );
-			renderer.domElement.addEventListener( 'mousemove', handleMouseMove );
-			renderer.domElement.addEventListener( 'mouseup', handleMouseUp );
+			if(mobileDetect.mobile()) {
+				renderer.domElement.addEventListener( 'touchend', handleTouchend );
+			} else {
+				renderer.domElement.addEventListener( 'mousedown', handleMouseDown );
+				renderer.domElement.addEventListener( 'mousemove', handleMouseMove );
+				renderer.domElement.addEventListener( 'mouseup', handleMouseUp );
+			}
 		};
 	})();
 
@@ -509,8 +530,7 @@ function App () {
 		// No dominos
 		if (layout.length === 0) {
 			console.log('Please place some dominos.');
-			var shareLayer = document.getElementById('shareDiv');
-			shareLayer.className = 'layer layer--share is-visible';
+			self.showLayer('shareDiv');	
 
 			var shareSucceeded = document.getElementById('shareSucceeded');
 			shareSucceeded.style.display='none';
@@ -531,8 +551,7 @@ function App () {
 		request.onload = function() {
 			var resp = JSON.parse(request.response);
 
-			var shareLayer = document.getElementById('shareDiv');
-			shareLayer.className = 'layer layer--share is-visible';
+			self.showLayer('shareDiv');
 
 			var shareSucceeded = document.getElementById('shareSucceeded');
 			shareSucceeded.style.display='block';
@@ -558,9 +577,17 @@ function App () {
 		request.send(JSON.stringify(data));
 	}
 
-	this.showHelp = function() {
-		var help = document.getElementById('helpDiv');
-		help.className = 'layer layer--help is-visible';
+	this.showLayer = function(layerId) {
+		var layer = document.getElementById(layerId);
+		layer.className += ' is-visible';
+	};
+
+	this.hideLayer = function(layerId) {
+		var layer = document.getElementById(layerId);
+		var className = layer.className;
+		var idx = className.lastIndexOf(' ');
+		className = className.substring(0, idx);
+		layer.className = className;
 	};
 
 	this.showGallery = function() {
@@ -573,18 +600,13 @@ function App () {
 		gallery.hideGallery();
 	};
 
-	this.hideHelp = function() {
-		var helpDiv = document.getElementById('helpDiv');
-		helpDiv.className = 'layer layer--help';
-	};
-
 	this.hideShare = function() {
 		controls.enabled = true;
-		var shareDiv = document.getElementById('shareDiv');
-		shareDiv.className = 'layer layer--share';
-	}
+		self.hideLayer('shareDiv');
+	};
 
-	this.Init = function() {	
+	this.Init = function() {
+		
 		initScene();
 
 		document.addEventListener( 'keydown', onKeyDown, false);
@@ -595,6 +617,10 @@ function App () {
 		var layoutId = Utils.getPageId();
 		if(layoutId) {
 			self.load(layoutId);		
+		}
+		
+		if(mobileDetect.mobile()) {
+			self.showLayer('noMobileDiv');
 		}
 	};	
 }

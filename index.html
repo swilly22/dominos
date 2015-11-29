@@ -39,7 +39,7 @@
 	        <div class="menu__bl3"><!-- --></div>
         </a>
         <ul class="menu__lists">
-            <li><a onclick="app.showHelp();">?</a></li>
+            <li><a onclick="app.showLayer('helpDiv');">?</a></li>
             <li><a onclick="app.showGallery();">Gallery</a></li>
             <li><a onclick="app.share();">Share</a></li>
             <li><a onclick="app.clearBoard();">Clear</a></li>
@@ -69,7 +69,7 @@
 	    </div>
 	</div>
 
-	<div id="helpDiv" class="layer layer--help" onclick="app.hideHelp();">
+	<div id="helpDiv" class="layer layer--help" onclick="app.hideLayer('helpDiv');">
 	<div class="layer--help__container">
 		<h2>Domino</h2>
 	        <p>
@@ -85,6 +85,17 @@
 	        <p class="layer--help__credit">
             	created by <a href="https://github.com/swilly22" target="_blank">swilly22</a>
             </p>
+        </div>
+    </div>
+
+    <div id="noMobileDiv" class="layer layer--nomobile">
+		<div class="layer--help__container">
+	        <div id="shareFailed" class="alert">
+		        <div class="alert__content">Sorry but this demo partially supports mobile at the moment.</div>
+		        <div class="alert__choises">
+		            <button onclick="app.hideLayer('noMobileDiv'); app.showGallery();" class="alert__btn" style="width:100%;">Browse Gallery</button>
+		        </div>
+	    	</div>
         </div>
     </div>
 
